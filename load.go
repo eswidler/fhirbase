@@ -391,6 +391,18 @@ func (b *fhirBundle) Next() (map[string]interface{}, error) {
 		return nil, io.EOF
 	}
 
+	id, ok := resMap["id"]
+
+	// TODO
+	// This needs to be done as part of a configuration setting
+	if !ok || id == "" {
+		fullURL, ok := entryMap["fullUrl"].(string)
+
+		if ok && fullURL != "" {
+			resMap["id"] = fullURL
+		}
+	}
+
 	return resMap, nil
 }
 

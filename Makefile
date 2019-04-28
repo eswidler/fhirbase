@@ -20,7 +20,7 @@ all: vendor a_main-packr.go lint fmt | $(BASE)
 a_main-packr.go: $(GOPATH)/bin/packr
 	rm -rfv $(GOPATH)/src/golang.org/x/tools/go/loader/testdata; \
 	rm -rfv $(GOPATH)/src/golang.org/x/tools/cmd/fiximports/testdata; \
-	$(GOPATH)/bin/packr -z
+# 	$(GOPATH)/bin/packr -z
 
 $(BASE):
 	@mkdir -p $(dir $@)
