@@ -498,7 +498,24 @@ func newMultifileBundle(fileNames []string) (*multifileBundle, error) {
 	result.count = 0
 	result.currentBndlIdx = 0
 
+	fmt.Printf("Reading bundles...\n")
+	// startTime := time.Now()
+	// totalCount := len(fileNames)
+
+	// bars := mpb.New(
+	// 	mpb.WithWidth(100),
+	// )
+
+	// bar := bars.AddBar(int64(totalCount),
+	// 	mpb.AppendDecorators(
+	// 		decor.Percentage(decor.WC{W: 3}),
+	// 		decor.AverageETA(decor.ET_STYLE_MMSS, decor.WC{W: 6}),
+	// 	),
+	// 	mpb.PrependDecorators(decor.CountersNoUnit("%d / %d", decor.WC{W: 10})))
+
 	for _, fileName := range fileNames {
+		// bar.IncrBy(1, time.Since(startTime))
+
 		f, err := openFile(fileName)
 
 		if err != nil {
@@ -540,6 +557,8 @@ func newMultifileBundle(fileNames []string) (*multifileBundle, error) {
 			result.count = result.count + bndl.Count()
 		}
 	}
+
+	// bars.Wait()
 
 	return &result, nil
 }
@@ -658,6 +677,8 @@ func countEntriesInBundle(iter *jsoniter.Iterator) (int, error) {
 	count := 0
 
 	for iter.ReadArray() {
+		// fmt.Printf(iter.ReadString() + "\n")
+		// fmt.Printf("Test %s\n", count)
 		count = count + 1
 		iter.Skip()
 	}
@@ -709,6 +730,12 @@ func (l *insertLoader) Load(db *pgx.Conn, bndl bundle, cb loaderCb) error {
 			}
 
 			resourceType, _ := resource["resourceType"].(string)
+
+			if resourceType == "Observation" {
+				fmt.Print(resource["category"].coding)
+				fmt.Print("\n")
+			}
+
 			tblName := strings.ToLower(resourceType)
 			id, ok := resource["id"].(string)
 
@@ -719,14 +746,19 @@ func (l *insertLoader) Load(db *pgx.Conn, bndl bundle, cb loaderCb) error {
 			}
 
 			if curResource%batchSize == 0 || curResource == totalCount-1 {
+				// fmt.Printf("Batch Send \n")
 				batch.Send(context.Background(), nil)
+				// fmt.Printf("Batch close \n")
 				batch.Close()
+				// fmt.Printf("Batch begin \n")
 
 				if curResource != totalCount-1 {
 					batch = db.BeginBatch()
 				} else {
 					batch = nil
 				}
+
+				// fmt.Printf("END \n")
 			}
 
 			curResource++
@@ -789,6 +821,7 @@ func loadFiles(files []string, ldr loader, memUsage bool) error {
 	insertedCounts := make(map[string]uint)
 	currentIdx := 0
 
+	fmt.Printf("Inserting resources...\n")
 	bars := mpb.New(
 		mpb.WithWidth(100),
 	)
