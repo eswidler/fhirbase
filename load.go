@@ -499,22 +499,22 @@ func newMultifileBundle(fileNames []string) (*multifileBundle, error) {
 	result.currentBndlIdx = 0
 
 	fmt.Printf("Reading bundles...\n")
-	// startTime := time.Now()
-	// totalCount := len(fileNames)
+	startTime := time.Now()
+	totalCount := len(fileNames)
 
-	// bars := mpb.New(
-	// 	mpb.WithWidth(100),
-	// )
+	bars := mpb.New(
+		mpb.WithWidth(100),
+	)
 
-	// bar := bars.AddBar(int64(totalCount),
-	// 	mpb.AppendDecorators(
-	// 		decor.Percentage(decor.WC{W: 3}),
-	// 		decor.AverageETA(decor.ET_STYLE_MMSS, decor.WC{W: 6}),
-	// 	),
-	// 	mpb.PrependDecorators(decor.CountersNoUnit("%d / %d", decor.WC{W: 10})))
+	bar := bars.AddBar(int64(totalCount),
+		mpb.AppendDecorators(
+			decor.Percentage(decor.WC{W: 3}),
+			decor.AverageETA(decor.ET_STYLE_MMSS, decor.WC{W: 6}),
+		),
+		mpb.PrependDecorators(decor.CountersNoUnit("%d / %d", decor.WC{W: 10})))
 
 	for _, fileName := range fileNames {
-		// bar.IncrBy(1, time.Since(startTime))
+		bar.IncrBy(1, time.Since(startTime))
 
 		f, err := openFile(fileName)
 
@@ -558,7 +558,7 @@ func newMultifileBundle(fileNames []string) (*multifileBundle, error) {
 		}
 	}
 
-	// bars.Wait()
+	bars.Wait()
 
 	return &result, nil
 }
@@ -677,10 +677,47 @@ func countEntriesInBundle(iter *jsoniter.Iterator) (int, error) {
 	count := 0
 
 	for iter.ReadArray() {
-		// fmt.Printf(iter.ReadString() + "\n")
-		// fmt.Printf("Test %s\n", count)
-		count = count + 1
-		iter.Skip()
+		// fmt.Print()
+
+		resource, _ := iter.Read().(map[string]interface{})["resource"].(map[string]interface{})
+		resourceType, _ := resource["resourceType"].(string)
+
+		if resourceType == "Observation" {
+			// fmt.Print(resource["category"].([]interface{})[0].(map[string]interface{})["coding"].([]interface{})[0].(map[string]interface{})["code"])
+			// fmt.Print(resource["category"].([]interface{}))
+			switch categories := resource["category"].(type) {
+			case []interface{}:
+				if len(categories) > 0 {
+					switch category := categories[0].(type) {
+					case map[string]interface{}:
+						switch codings := category["coding"].(type) {
+						case []interface{}:
+							if len(codings) > 0 {
+								switch coding := codings[0].(type) {
+								case map[string]interface{}:
+									if coding["code"] != "vital_signs" {
+										count = count + 1
+									}
+								default:
+									count = count + 1
+								}
+							}
+						default:
+							count = count + 1
+						}
+					default:
+						count = count + 1
+					}
+				}
+			default:
+				count = count + 1
+			}
+		} else {
+			count = count + 1
+		}
+
+		// iter.Skip()
+		// fmt.Print("\n")
 	}
 
 	return count, nil
@@ -732,8 +769,28 @@ func (l *insertLoader) Load(db *pgx.Conn, bndl bundle, cb loaderCb) error {
 			resourceType, _ := resource["resourceType"].(string)
 
 			if resourceType == "Observation" {
-				fmt.Print(resource["category"].coding)
-				fmt.Print("\n")
+				// fmt.Print(resource["category"].([]interface{})[0].(map[string]interface{})["coding"].([]interface{})[0].(map[string]interface{})["code"])
+				// fmt.Print(resource["category"].([]interface{}))
+				switch categories := resource["category"].(type) {
+				case []interface{}:
+					if len(categories) > 0 {
+						switch category := categories[0].(type) {
+						case map[string]interface{}:
+							switch codings := category["coding"].(type) {
+							case []interface{}:
+								if len(codings) > 0 {
+									switch coding := codings[0].(type) {
+									case map[string]interface{}:
+										if coding["code"] == "vital_signs" {
+											continue
+										}
+									}
+								}
+							}
+
+						}
+					}
+				}
 			}
 
 			tblName := strings.ToLower(resourceType)
